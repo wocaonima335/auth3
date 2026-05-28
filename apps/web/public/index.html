@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>auth Phase3 控制面</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">compat MVP</p>
+          <h1>Phase3 补 token 控制面</h1>
+          <p class="summary">
+            输入邮箱，查询上下文，创建补 token 任务，并查看执行结果与 token 下载入口。
+          </p>
+        </div>
+        <div class="api-card">
+          <label for="apiBase">API Base</label>
+          <input id="apiBase" value="http://localhost:3000">
+          <button id="saveApiBase">保存</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>创建任务</h2>
+        <form id="createForm" class="stack">
+          <label for="emailInput">邮箱</label>
+          <input id="emailInput" type="email" placeholder="user@example.com" required>
+          <button type="submit">查询并创建任务</button>
+        </form>
+        <div id="accountResult" class="result"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>最近任务</h2>
+          <button id="refreshJobs">刷新</button>
+        </div>
+        <div id="jobsList" class="list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>任务详情</h2>
+          <button id="clearDetail">清空</button>
+        </div>
+        <div id="jobDetail" class="detail">尚未选择任务</div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+  </html>

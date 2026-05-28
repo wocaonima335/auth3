@@ -1,0 +1,19 @@
+{
+  "name": "auth",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phase3 token refresh control plane in compat MVP mode",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "node apps/api/src/server.js",
+    "dev:worker": "node apps/worker/src/worker.js",
+    "dev:web": "node apps/web/src/server.js",
+    "sync:accounts": "node scripts/sync-accounts.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

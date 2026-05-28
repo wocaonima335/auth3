@@ -1,0 +1,52 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/api.Dockerfile
+    environment:
+      AUTH_API_PORT: 3000
+      AUTH_WEB_PORT: 3010
+      AUTH_WORKER_POLL_MS: 3000
+      AUTH_DEFAULT_USER: local-admin
+      AUTH_DATA_DIR: /app/data
+      AUTH_RUNTIME_MODE: compat-legacy-cli
+      AUTH_LEGACY_PROJECT_ROOT: /legacy
+      AUTH_USERNAME_SOURCE: /legacy/username.json
+      AUTH_LEGACY_TOKEN_DIRS: /legacy/tokens
+      AUTH_LEGACY_CONFIG_PROFILE: server
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../data:/app/data
+      - E:/codex-registrar2/codex-registrar2_副本:/legacy
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      AUTH_API_PORT: 3000
+      AUTH_WEB_PORT: 3010
+      AUTH_WORKER_POLL_MS: 3000
+      AUTH_DEFAULT_USER: local-admin
+      AUTH_DATA_DIR: /app/data
+      AUTH_RUNTIME_MODE: compat-legacy-cli
+      AUTH_LEGACY_PROJECT_ROOT: /legacy
+      AUTH_USERNAME_SOURCE: /legacy/username.json
+      AUTH_LEGACY_TOKEN_DIRS: /legacy/tokens
+      AUTH_LEGACY_CONFIG_PROFILE: server
+    volumes:
+      - ../data:/app/data
+      - E:/codex-registrar2/codex-registrar2_副本:/legacy
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/web.Dockerfile
+    environment:
+      AUTH_WEB_PORT: 3010
+      AUTH_API_BASE: http://localhost:3000
+    ports:
+      - "3010:3010"
+    depends_on:
+      - api
