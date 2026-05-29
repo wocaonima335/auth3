@@ -1,70 +1,83 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>auth Phase3 控制面</title>
-    <link rel="stylesheet" href="/styles.css">
-  </head>
-  <body>
-    <main class="page">
-      <section class="hero">
-        <div>
-          <p class="eyebrow">compat MVP</p>
-          <h1>Phase3 补 token 控制面</h1>
-          <p class="summary">
-            管理员登录后可查看全部账号任务。普通用户无需登录，提交邮箱后仅可查看该邮箱的任务情况。
-          </p>
-        </div>
-        <div class="api-card">
-          <label for="apiBase">API Base</label>
-          <input id="apiBase" value="http://localhost:3000">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>auth Phase3 控制面</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1>Phase3 控制面</h1>
+        <span class="badge" id="workerStatus">connecting</span>
+      </div>
+      <div class="topbar-right">
+        <label class="api-toggle" id="apiToggle">API</label>
+        <div class="api-popup hidden" id="apiPopup">
+          <input id="apiBase" placeholder="http://host:3080">
           <button id="saveApiBase">保存</button>
         </div>
-      </section>
+      </div>
+    </header>
 
-      <section class="panel">
-        <div class="panel-header">
-          <h2>访问模式</h2>
-          <button id="logoutButton" class="secondary">退出当前模式</button>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h2>任务列表</h2>
+          <button id="createJobBtn" class="btn-icon" title="新建任务">+</button>
         </div>
-        <div id="sessionSummary" class="detail">当前为匿名访客模式</div>
-        <form id="adminLoginForm" class="stack">
-          <label for="adminUsername">管理员账号</label>
-          <input id="adminUsername" value="admin" autocomplete="username">
-          <label for="adminPassword">管理员密码</label>
-          <input id="adminPassword" type="password" value="abc15497" autocomplete="current-password">
-          <button type="submit">管理员登录</button>
-        </form>
-      </section>
+        <div id="jobsList" class="job-list"></div>
+      </aside>
 
-      <section class="panel">
-        <h2>创建任务</h2>
-        <form id="createForm" class="stack">
-          <label for="emailInput">邮箱</label>
+      <section class="main-area">
+        <div id="emptyState" class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>选择左侧任务查看详情，或点击 + 创建新任务</p>
+        </div>
+
+        <div id="jobDetail" class="detail-panel hidden">
+          <div class="detail-header">
+            <div>
+              <span class="status" id="detailStatus">—</span>
+              <h2 id="detailEmail">—</h2>
+            </div>
+            <div class="detail-actions" id="detailActions"></div>
+          </div>
+          <div class="detail-meta" id="detailMeta"></div>
+          <div class="log-container">
+            <div class="log-header">
+              <h3>实时日志</h3>
+              <label class="auto-scroll-label">
+                <input type="checkbox" id="autoScroll" checked> 自动滚动
+              </label>
+            </div>
+            <div class="log-body" id="logBody"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-overlay hidden" id="createModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>创建 Phase3 任务</h2>
+          <button class="btn-icon modal-close" id="closeModal">&times;</button>
+        </div>
+        <form id="createForm" class="modal-body">
+          <label for="emailInput">邮箱地址</label>
           <input id="emailInput" type="email" placeholder="user@example.com" required>
-          <button type="submit">查询并创建任务</button>
+          <div id="accountPreview" class="account-preview hidden"></div>
+          <div class="modal-footer">
+            <button type="button" class="btn-ghost" id="cancelModal">取消</button>
+            <button type="submit" class="btn-primary" id="submitJob">创建任务</button>
+          </div>
         </form>
-        <div id="accountResult" class="result"></div>
-      </section>
+      </div>
+    </div>
+  </main>
 
-      <section class="panel">
-        <div class="panel-header">
-          <h2 id="jobsTitle">当前范围任务</h2>
-          <button id="refreshJobs">刷新</button>
-        </div>
-        <div id="jobsList" class="list"></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header">
-          <h2>任务详情</h2>
-          <button id="clearDetail">清空</button>
-        </div>
-        <div id="jobDetail" class="detail">尚未选择任务</div>
-      </section>
-    </main>
-
-    <script src="/app.js"></script>
-  </body>
-  </html>
+  <script src="/app.js"></script>
+</body>
+</html>

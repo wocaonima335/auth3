@@ -164,6 +164,20 @@ class FilePhase3JobRepository {
     return updated;
   }
 
+  markCanceled(jobId) {
+    const updated = this.updateJob(jobId, {
+      status: JOB_STATUS.CANCELED,
+      currentStep: JOB_STATUS.CANCELED,
+      failureReason: '用户取消',
+      finishedAt: nowIso()
+    });
+    this.appendEvent(jobId, {
+      level: 'warn',
+      message: '任务已被用户取消'
+    });
+    return updated;
+  }
+
   createRetryJob(jobId, triggeredBy) {
     const current = this.getJob(jobId);
     if (!current) {

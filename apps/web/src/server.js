@@ -15,6 +15,6 @@ const server = http.createServer((req, res) => {
   serveStaticFile(res, path.join(publicDir, pathname.replace(/^\//, '')));
 });
 
-server.listen(config.webPort, () => {
-  console.log(`[auth-web] listening on http://localhost:${config.webPort}`);
+server.listen(config.webPort, '0.0.0.0', () => {
+  console.log(`[auth-web] listening on http://0.0.0.0:${config.webPort}`);
 });

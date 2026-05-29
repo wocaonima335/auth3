@@ -1,5 +1,23 @@
 const path = require('path');
+const fs = require('fs');
 const { ensureDir } = require('../shared-utils');
+
+function loadDotEnv(repoRoot) {
+  const envFile = path.join(repoRoot, '.env');
+  if (!fs.existsSync(envFile)) return;
+  const text = fs.readFileSync(envFile, 'utf8');
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq < 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const val = trimmed.slice(eq + 1).trim();
+    if (!(key in process.env)) {
+      process.env[key] = val;
+    }
+  }
+}
 
 function splitCandidateDirs(rawValue = '') {
   return String(rawValue || '')
@@ -9,6 +27,7 @@ function splitCandidateDirs(rawValue = '') {
 }
 
 function loadRuntimeConfig(repoRoot = path.resolve(__dirname, '..', '..')) {
+  loadDotEnv(repoRoot);
   const dataDir = path.resolve(repoRoot, process.env.AUTH_DATA_DIR || 'data');
   const runtimeDir = path.join(dataDir, 'runtime');
   const dbDir = path.join(runtimeDir, 'db');
@@ -46,10 +65,7 @@ function loadRuntimeConfig(repoRoot = path.resolve(__dirname, '..', '..')) {
     candidateTokenDirs,
     legacyConfigProfile: process.env.AUTH_LEGACY_CONFIG_PROFILE || 'server',
     legacyConfigFile: process.env.AUTH_LEGACY_CONFIG_FILE || '',
-    webApiBase: process.env.AUTH_API_BASE || `http://localhost:${Number(process.env.AUTH_API_PORT || 3000)}`,
-    adminUsername: process.env.AUTH_ADMIN_USERNAME || 'admin',
-    adminPassword: process.env.AUTH_ADMIN_PASSWORD || 'abc15497',
-    authTokenSecret: process.env.AUTH_TOKEN_SECRET || 'auth-local-secret'
+    webApiBase: process.env.AUTH_API_BASE || `http://localhost:${Number(process.env.AUTH_API_PORT || 3000)}`
   };
 }
 

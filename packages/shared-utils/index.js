@@ -45,6 +45,7 @@ function createId(prefix = 'id') {
 function sanitizeEmail(email) {
   return String(email || 'unknown')
     .trim()
+    .replace(/[@.]/g, '_')
     .replace(/[\\/:*?"<>|]/g, '_');
 }
 

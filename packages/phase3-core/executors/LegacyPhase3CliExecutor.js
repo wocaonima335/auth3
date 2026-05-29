@@ -29,10 +29,26 @@ function buildPhoneVerificationRequiredError(line = '') {
 class LegacyPhase3CliExecutor {
   constructor(config) {
     this.config = config;
+    this._activeChild = null;
+  }
+
+  kill() {
+    if (this._activeChild && !this._activeChild.killed) {
+      try {
+        this._activeChild.kill('SIGTERM');
+        setTimeout(() => {
+          if (this._activeChild && !this._activeChild.killed) {
+            this._activeChild.kill('SIGKILL');
+          }
+        }, 2000);
+      } catch (_) {
+        // ignore
+      }
+    }
   }
 
   async run(options = {}) {
-    const { email, onEvent = () => {} } = options;
+    const { email, onEvent = () => {}, isCanceled = () => false } = options;
     const entrypoint = this.config.legacyEntrypoint;
     if (!fileExists(entrypoint)) {
       throw new Error(`legacy 入口不存在: ${entrypoint}`);
@@ -40,7 +56,7 @@ class LegacyPhase3CliExecutor {
 
     const args = [
       entrypoint,
-      '--stage=phase3-fetch-token',
+      '--phase3',
       `--email=${email}`
     ];
 
@@ -57,7 +73,7 @@ class LegacyPhase3CliExecutor {
       message: `开始调用 legacy Phase3: ${email}`
     });
 
-    await new Promise((resolve, reject) => {
+    const runResult = await new Promise((resolve, reject) => {
       let settled = false;
       let abortError = null;
 
@@ -82,6 +98,8 @@ class LegacyPhase3CliExecutor {
         env,
         stdio: ['ignore', 'pipe', 'pipe']
       });
+
+      this._activeChild = child;
 
       const abortChild = (error) => {
         if (abortError) {
@@ -116,9 +134,16 @@ class LegacyPhase3CliExecutor {
       splitBufferLines(child.stderr, handleLine('warn'));
 
       child.on('error', (error) => {
+        this._activeChild = null;
         finish(reject, abortError || error);
       });
+
       child.on('exit', (code) => {
+        this._activeChild = null;
+        if (isCanceled()) {
+          finish(reject, new Error('任务已被用户取消'));
+          return;
+        }
         if (abortError) {
           finish(reject, abortError);
           return;
@@ -130,6 +155,12 @@ class LegacyPhase3CliExecutor {
         finish(reject, new Error(`legacy Phase3 退出码异常: ${code}`));
       });
     });
+
+    if (isCanceled()) {
+      throw new Error('任务已被用户取消');
+    }
+
+    // abortError 通过 Promise rejection 传递，无需再检查
 
     const tokenMatch = detectLatestTokenFile(email, this.config.candidateTokenDirs);
     if (!tokenMatch) {

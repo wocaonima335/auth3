@@ -36,13 +36,21 @@ async function processNextJob() {
   }
 
   console.log(`[auth-worker] processing job ${job.id} ${job.email}`);
+
+  // isCanceled: 读取任务文件检查是否已被标记为 canceled
+  const isCanceled = () => {
+    const current = jobRepository.getJob(job.id);
+    return current && current.status === 'canceled';
+  };
+
   try {
     await runPhase3Job({
       job,
       accountRepository,
       artifactRepository,
       jobRepository,
-      executor
+      executor,
+      isCanceled
     });
   } catch (error) {
     logWorkerFatal(`job crashed ${job.id}`, error);
