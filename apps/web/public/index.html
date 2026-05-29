@@ -13,7 +13,7 @@
           <p class="eyebrow">compat MVP</p>
           <h1>Phase3 补 token 控制面</h1>
           <p class="summary">
-            输入邮箱，查询上下文，创建补 token 任务，并查看执行结果与 token 下载入口。
+            管理员登录后可查看全部账号任务。普通用户无需登录，提交邮箱后仅可查看该邮箱的任务情况。
           </p>
         </div>
         <div class="api-card">
@@ -21,6 +21,21 @@
           <input id="apiBase" value="http://localhost:3000">
           <button id="saveApiBase">保存</button>
         </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>访问模式</h2>
+          <button id="logoutButton" class="secondary">退出当前模式</button>
+        </div>
+        <div id="sessionSummary" class="detail">当前为匿名访客模式</div>
+        <form id="adminLoginForm" class="stack">
+          <label for="adminUsername">管理员账号</label>
+          <input id="adminUsername" value="admin" autocomplete="username">
+          <label for="adminPassword">管理员密码</label>
+          <input id="adminPassword" type="password" value="abc15497" autocomplete="current-password">
+          <button type="submit">管理员登录</button>
+        </form>
       </section>
 
       <section class="panel">
@@ -35,7 +50,7 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2>最近任务</h2>
+          <h2 id="jobsTitle">当前范围任务</h2>
           <button id="refreshJobs">刷新</button>
         </div>
         <div id="jobsList" class="list"></div>

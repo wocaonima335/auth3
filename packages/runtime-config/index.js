@@ -46,7 +46,10 @@ function loadRuntimeConfig(repoRoot = path.resolve(__dirname, '..', '..')) {
     candidateTokenDirs,
     legacyConfigProfile: process.env.AUTH_LEGACY_CONFIG_PROFILE || 'server',
     legacyConfigFile: process.env.AUTH_LEGACY_CONFIG_FILE || '',
-    webApiBase: process.env.AUTH_API_BASE || `http://localhost:${Number(process.env.AUTH_API_PORT || 3000)}`
+    webApiBase: process.env.AUTH_API_BASE || `http://localhost:${Number(process.env.AUTH_API_PORT || 3000)}`,
+    adminUsername: process.env.AUTH_ADMIN_USERNAME || 'admin',
+    adminPassword: process.env.AUTH_ADMIN_PASSWORD || 'abc15497',
+    authTokenSecret: process.env.AUTH_TOKEN_SECRET || 'auth-local-secret'
   };
 }
 

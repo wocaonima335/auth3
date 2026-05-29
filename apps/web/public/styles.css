@@ -111,6 +111,10 @@ button.secondary {
   margin-top: 14px;
 }
 
+a {
+  text-decoration: none;
+}
+
 .card {
   border: 1px solid var(--line);
   border-radius: 14px;
