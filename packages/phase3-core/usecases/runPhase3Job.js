@@ -16,11 +16,15 @@ async function runPhase3Job(options = {}) {
   }
 
   const emit = (level, message, payload = null) => {
-    jobRepository.appendEvent(job.id, {
-      level,
-      message,
-      payload
-    });
+    try {
+      jobRepository.appendEvent(job.id, {
+        level,
+        message,
+        payload
+      });
+    } catch (error) {
+      console.error(`[runPhase3Job] appendEvent failed for ${job.id}: ${error.message}`);
+    }
   };
 
   try {
@@ -52,6 +56,9 @@ async function runPhase3Job(options = {}) {
       failureReason: ''
     });
   } catch (error) {
+    emit('error', `Phase3 执行捕获异常: ${formatError(error)}`, {
+      code: error.code || ''
+    });
     accountRepository.updateStatus(email, ACCOUNT_STATUS.OAUTH_PHASE3_FAILED, {
       lastFailureReason: formatError(error)
     });

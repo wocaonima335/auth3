@@ -1,6 +1,31 @@
 const { spawn } = require('child_process');
 const { detectLatestTokenFile, fileExists, splitBufferLines } = require('../../shared-utils');
 
+function shouldAbortForPhoneVerification(line = '') {
+  const text = String(line || '').trim();
+  if (!text) {
+    return false;
+  }
+
+  return [
+    /phone-verification/i,
+    /contact-verification/i,
+    /phone-otp/i,
+    /\bselect-channel\b/i,
+    /需要 SMS 验证码/i,
+    /需要手机验证码/i,
+    /检测到需要手机验证/i,
+    /hit SMS verification/i
+  ].some((pattern) => pattern.test(text));
+}
+
+function buildPhoneVerificationRequiredError(line = '') {
+  const suffix = line ? `: ${line}` : '';
+  const error = new Error(`检测到需要 phone-verification，本轮任务按策略直接失败${suffix}`);
+  error.code = 'PHONE_VERIFICATION_REQUIRED';
+  return error;
+}
+
 class LegacyPhase3CliExecutor {
   constructor(config) {
     this.config = config;
@@ -33,33 +58,76 @@ class LegacyPhase3CliExecutor {
     });
 
     await new Promise((resolve, reject) => {
+      let settled = false;
+      let abortError = null;
+
+      const finish = (handler, value) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        handler(value);
+      };
+
+      const safeEmit = (event) => {
+        try {
+          onEvent(event);
+        } catch (error) {
+          console.error(`[auth-legacy-executor] onEvent failed: ${error.message}`);
+        }
+      };
+
       const child = spawn(process.execPath, args, {
         cwd: this.config.legacyProjectRoot,
         env,
         stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      splitBufferLines(child.stdout, (line) => {
-        onEvent({
-          level: 'info',
-          message: line
-        });
-      });
-
-      splitBufferLines(child.stderr, (line) => {
-        onEvent({
-          level: 'warn',
-          message: line
-        });
-      });
-
-      child.on('error', reject);
-      child.on('exit', (code) => {
-        if (code === 0) {
-          resolve();
+      const abortChild = (error) => {
+        if (abortError) {
           return;
         }
-        reject(new Error(`legacy Phase3 退出码异常: ${code}`));
+        abortError = error;
+        safeEmit({
+          level: 'error',
+          message: error.message,
+          payload: {
+            code: error.code || ''
+          }
+        });
+        try {
+          child.kill();
+        } catch (killError) {
+          console.error(`[auth-legacy-executor] child.kill failed: ${killError.message}`);
+        }
+      };
+
+      const handleLine = (level) => (line) => {
+        safeEmit({
+          level,
+          message: line
+        });
+        if (!abortError && shouldAbortForPhoneVerification(line)) {
+          abortChild(buildPhoneVerificationRequiredError(line));
+        }
+      };
+
+      splitBufferLines(child.stdout, handleLine('info'));
+      splitBufferLines(child.stderr, handleLine('warn'));
+
+      child.on('error', (error) => {
+        finish(reject, abortError || error);
+      });
+      child.on('exit', (code) => {
+        if (abortError) {
+          finish(reject, abortError);
+          return;
+        }
+        if (code === 0) {
+          finish(resolve);
+          return;
+        }
+        finish(reject, new Error(`legacy Phase3 退出码异常: ${code}`));
       });
     });
 

@@ -14,6 +14,21 @@ const artifactRepository = new FileArtifactRepository(config);
 const executor = new LegacyPhase3CliExecutor(config);
 const workerId = `worker-${os.hostname()}-${process.pid}`;
 
+function logWorkerFatal(label, error) {
+  const message = error instanceof Error
+    ? (error.stack || error.message)
+    : String(error);
+  console.error(`[auth-worker] ${label}: ${message}`);
+}
+
+process.on('unhandledRejection', (reason) => {
+  logWorkerFatal('unhandledRejection', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  logWorkerFatal('uncaughtException', error);
+});
+
 async function processNextJob() {
   const job = jobRepository.reserveNextQueuedJob(workerId);
   if (!job) {
@@ -21,13 +36,22 @@ async function processNextJob() {
   }
 
   console.log(`[auth-worker] processing job ${job.id} ${job.email}`);
-  await runPhase3Job({
-    job,
-    accountRepository,
-    artifactRepository,
-    jobRepository,
-    executor
-  });
+  try {
+    await runPhase3Job({
+      job,
+      accountRepository,
+      artifactRepository,
+      jobRepository,
+      executor
+    });
+  } catch (error) {
+    logWorkerFatal(`job crashed ${job.id}`, error);
+    try {
+      jobRepository.markFailed(job.id, error);
+    } catch (markError) {
+      logWorkerFatal(`markFailed crashed ${job.id}`, markError);
+    }
+  }
   return true;
 }
 
@@ -40,13 +64,13 @@ async function main() {
         await sleep(config.workerPollMs);
       }
     } catch (error) {
-      console.error('[auth-worker] loop error:', error.message);
+      logWorkerFatal('loop error', error);
       await sleep(config.workerPollMs);
     }
   }
 }
 
 main().catch((error) => {
-  console.error(error);
+  logWorkerFatal('main crashed', error);
   process.exitCode = 1;
 });
