@@ -14,11 +14,12 @@
         <span class="badge" id="workerStatus">connecting</span>
       </div>
       <div class="topbar-right">
-        <span id="sessionInfo" class="session-info"></span>
-        <button id="logoutBtn" class="btn-ghost btn-sm hidden">退出</button>
+        <span id="sessionInfo" class="session-info">匿名访客：提交邮箱后自动锁定到该邮箱任务</span>
+        <button id="openAdminModalBtn" class="btn-ghost btn-sm" type="button">管理员登录</button>
+        <button id="logoutBtn" class="btn-ghost btn-sm hidden" type="button">退出</button>
         <label class="api-toggle" id="apiToggle">API</label>
         <div class="api-popup hidden" id="apiPopup">
-          <input id="apiBase" placeholder="http://host:3080">
+          <input id="apiBase" placeholder="http://host:3000">
           <button id="saveApiBase">保存</button>
         </div>
       </div>
@@ -27,7 +28,7 @@
     <div class="layout">
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h2 id="jobsTitle">任务列表</h2>
+          <h2 id="jobsTitle">当前范围任务</h2>
           <button id="createJobBtn" class="btn-icon" title="新建任务">+</button>
         </div>
         <div id="jobsList" class="job-list"></div>
@@ -61,12 +62,11 @@
       </section>
     </div>
 
-    <!-- 创建任务弹窗 -->
     <div class="modal-overlay hidden" id="createModal">
       <div class="modal">
         <div class="modal-header">
           <h2>创建 Phase3 任务</h2>
-          <button class="btn-icon modal-close" id="closeModal">&times;</button>
+          <button class="btn-icon modal-close" id="closeModal" type="button">&times;</button>
         </div>
         <form id="createForm" class="modal-body">
           <label for="emailInput">邮箱地址</label>
@@ -74,18 +74,17 @@
           <div id="accountPreview" class="account-preview hidden"></div>
           <div class="modal-footer">
             <button type="button" class="btn-ghost" id="cancelModal">取消</button>
-            <button type="submit" class="btn-primary" id="submitJob">创建任务</button>
+            <button type="submit" class="btn-primary">创建任务</button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- 管理员登录弹窗 -->
     <div class="modal-overlay hidden" id="adminModal">
       <div class="modal">
         <div class="modal-header">
           <h2>管理员登录</h2>
-          <button class="btn-icon modal-close" id="closeAdminModal">&times;</button>
+          <button class="btn-icon modal-close" id="closeAdminModal" type="button">&times;</button>
         </div>
         <form id="adminLoginForm" class="modal-body">
           <label for="adminUsername">管理员账号</label>

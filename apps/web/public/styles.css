@@ -57,6 +57,29 @@ body {
   font-weight: 600;
 }
 
+.topbar-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-info {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  max-width: 420px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .badge {
   font-size: 11px;
   padding: 3px 10px;
@@ -68,8 +91,6 @@ body {
 
 .badge.live { background: var(--success-dim); color: var(--success); }
 .badge.offline { background: var(--error-dim); color: var(--error); }
-
-.topbar-right { position: relative; }
 
 .api-toggle {
   font-size: 12px;
@@ -83,9 +104,8 @@ body {
 
 .api-popup {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   right: 0;
-  margin-top: 8px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -340,18 +360,14 @@ body {
 
 .btn-ghost:hover { background: var(--surface); color: var(--ink); }
 
-.btn-danger {
-  padding: 7px 18px;
-  border-radius: var(--radius-sm);
-  background: var(--error);
-  color: #fff;
-  border: none;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
+.btn-ghost.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
 }
 
-.btn-danger:hover { filter: brightness(1.1); }
+#logoutBtn.hidden {
+  display: none !important;
+}
 
 .btn-sm {
   padding: 5px 12px;
@@ -511,7 +527,9 @@ body {
   color: var(--muted);
 }
 
-.modal-body input[type="email"] {
+.modal-body input[type="email"],
+.modal-body input[type="password"],
+.modal-body input[type="text"] {
   padding: 10px 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -552,8 +570,24 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 /* ── Responsive ── */
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { display: none; }
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .topbar-right {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .session-info {
+    max-width: 100%;
+  }
 }

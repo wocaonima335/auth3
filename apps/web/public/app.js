@@ -3,97 +3,215 @@ const state = {
   apiBase: localStorage.getItem('auth.apiBase') || '',
   jobs: [],
   selectedJobId: null,
-  lastEventSeq: 0,
   pollTimer: null,
   detailPollTimer: null
 };
 
 /* ── DOM refs ── */
 const $ = (id) => document.getElementById(id);
-const apiBaseInput     = $('apiBase');
-const saveApiBaseBtn   = $('saveApiBase');
-const apiToggle        = $('apiToggle');
-const apiPopup         = $('apiPopup');
-const workerStatus     = $('workerStatus');
-const jobsList         = $('jobsList');
-const createJobBtn     = $('createJobBtn');
-const emptyState       = $('emptyState');
-const jobDetail        = $('jobDetail');
-const detailStatus     = $('detailStatus');
-const detailEmail      = $('detailEmail');
-const detailMeta       = $('detailMeta');
-const detailActions    = $('detailActions');
-const logBody          = $('logBody');
-const autoScrollCb     = $('autoScroll');
-const createModal      = $('createModal');
-const closeModal       = $('closeModal');
-const cancelModal      = $('cancelModal');
-const createForm       = $('createForm');
-const emailInput       = $('emailInput');
-const accountPreview   = $('accountPreview');
-const submitJob        = $('submitJob');
+const apiBaseInput = $('apiBase');
+const saveApiBaseBtn = $('saveApiBase');
+const apiToggle = $('apiToggle');
+const apiPopup = $('apiPopup');
+const workerStatus = $('workerStatus');
+const sessionInfo = $('sessionInfo');
+const openAdminModalBtn = $('openAdminModalBtn');
+const logoutBtn = $('logoutBtn');
+const jobsList = $('jobsList');
+const jobsTitle = $('jobsTitle');
+const createJobBtn = $('createJobBtn');
+const emptyState = $('emptyState');
+const jobDetail = $('jobDetail');
+const detailStatus = $('detailStatus');
+const detailEmail = $('detailEmail');
+const detailMeta = $('detailMeta');
+const detailActions = $('detailActions');
+const logBody = $('logBody');
+const autoScrollCb = $('autoScroll');
+const createModal = $('createModal');
+const closeModal = $('closeModal');
+const cancelModal = $('cancelModal');
+const createForm = $('createForm');
+const emailInput = $('emailInput');
+const accountPreview = $('accountPreview');
+const adminModal = $('adminModal');
+const closeAdminModalBtn = $('closeAdminModal');
+const cancelAdminBtn = $('cancelAdmin');
+const adminLoginForm = $('adminLoginForm');
+const adminUsernameInput = $('adminUsername');
+const adminPasswordInput = $('adminPassword');
+
+/* ── Session helpers ── */
+function getSession() {
+  try {
+    return JSON.parse(localStorage.getItem('auth.session') || 'null');
+  } catch (error) {
+    return null;
+  }
+}
+
+function setSession(session) {
+  if (!session) {
+    localStorage.removeItem('auth.session');
+    return;
+  }
+  localStorage.setItem('auth.session', JSON.stringify(session));
+}
+
+function clearSession() {
+  setSession(null);
+}
+
+function getCurrentRole() {
+  return getSession()?.role || 'anonymous';
+}
+
+function buildAuthHeaders() {
+  const session = getSession();
+  if (!session?.token) {
+    return {};
+  }
+  return {
+    Authorization: `Bearer ${session.token}`
+  };
+}
 
 /* ── Helpers ── */
 function getApiBase() {
-  if (state.apiBase) return state.apiBase;
-  return `http://${window.location.hostname}:3080`;
+  if (state.apiBase) {
+    return state.apiBase;
+  }
+  return `http://${window.location.hostname}:3000`;
 }
 
-function setApiBase(v) {
-  state.apiBase = v;
-  localStorage.setItem('auth.apiBase', v);
-  apiBaseInput.value = v;
+function setApiBase(value) {
+  state.apiBase = value;
+  localStorage.setItem('auth.apiBase', value);
+  apiBaseInput.value = value;
 }
 
 async function api(path, opts = {}) {
-  const res = await fetch(`${getApiBase()}${path}`, {
+  const response = await fetch(`${getApiBase()}${path}`, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', 'X-Auth-User': 'local-admin', ...(opts.headers || {}) }
+    headers: {
+      'Content-Type': 'application/json',
+      ...buildAuthHeaders(),
+      ...(opts.headers || {})
+    }
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
-  return data;
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.message || payload.error || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
 }
 
-function isRunning(s) {
-  return ['queued','validating','starting_browser','authorizing','waiting_email_code','exchanging_token','persisting_artifacts'].includes(s);
+function isRunning(status) {
+  return [
+    'queued',
+    'validating',
+    'starting_browser',
+    'authorizing',
+    'waiting_email_code',
+    'exchanging_token',
+    'persisting_artifacts'
+  ].includes(status);
 }
 
-function statusClass(s) {
-  if (s === 'succeeded') return 'succeeded';
-  if (s === 'failed') return 'failed';
-  if (s === 'canceled') return 'canceled';
-  if (isRunning(s)) return 'running';
+function canRetry(job) {
+  return getCurrentRole() === 'admin' && ['failed', 'canceled'].includes(job.status);
+}
+
+function statusClass(status) {
+  if (status === 'succeeded') return 'succeeded';
+  if (status === 'failed') return 'failed';
+  if (status === 'canceled') return 'canceled';
+  if (isRunning(status)) return 'running';
   return 'queued';
 }
 
-function dotClass(s) {
-  if (isRunning(s)) return 'running';
-  if (s === 'succeeded') return 'succeeded';
-  if (s === 'failed') return 'failed';
-  if (s === 'canceled') return 'canceled';
+function dotClass(status) {
+  if (isRunning(status)) return 'running';
+  if (status === 'succeeded') return 'succeeded';
+  if (status === 'failed') return 'failed';
+  if (status === 'canceled') return 'canceled';
   return 'queued';
 }
 
 function timeAgo(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
-  const sec = Math.floor((Date.now() - d) / 1000);
-  if (sec < 60) return `${sec}s ago`;
-  if (sec < 3600) return `${Math.floor(sec/60)}m ago`;
-  if (sec < 86400) return `${Math.floor(sec/3600)}h ago`;
-  return d.toLocaleDateString();
+  const date = new Date(iso);
+  const seconds = Math.floor((Date.now() - date) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return date.toLocaleDateString();
 }
 
 function shortTime(iso) {
   if (!iso) return '';
-  return new Date(iso).toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  return new Date(iso).toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
 }
 
-function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+function escHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function openCreateModal() {
+  createModal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  emailInput.focus();
+}
+
+function closeCreateModal() {
+  createModal.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+  emailInput.value = '';
+  accountPreview.classList.add('hidden');
+}
+
+function openAdminModal() {
+  adminModal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  adminUsernameInput.focus();
+}
+
+function closeAdminModal() {
+  adminModal.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+function renderSession() {
+  const session = getSession();
+  if (!session) {
+    sessionInfo.textContent = '匿名访客：提交邮箱后自动锁定到该邮箱任务';
+    jobsTitle.textContent = '当前范围任务';
+    openAdminModalBtn.classList.remove('hidden');
+    logoutBtn.classList.add('hidden');
+    return;
+  }
+
+  if (session.role === 'admin') {
+    sessionInfo.textContent = `管理员 ${session.username || 'admin'}：可查看全部账号任务`;
+    jobsTitle.textContent = '全部任务';
+    openAdminModalBtn.classList.add('hidden');
+    logoutBtn.classList.remove('hidden');
+    return;
+  }
+
+  sessionInfo.textContent = `邮箱访客 ${session.email}：仅可查看该邮箱任务`;
+  jobsTitle.textContent = `${session.email} 的任务`;
+  openAdminModalBtn.classList.remove('hidden');
+  logoutBtn.classList.remove('hidden');
 }
 
 /* ── Render: Job List ── */
@@ -102,16 +220,32 @@ function renderJobList() {
     jobsList.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">暂无任务</div>';
     return;
   }
-  jobsList.innerHTML = state.jobs.map(j => `
-    <div class="job-item ${j.id === state.selectedJobId ? 'active' : ''}" data-job-id="${j.id}">
-      <div class="job-item-email">${escHtml(j.email)}</div>
+
+  jobsList.innerHTML = state.jobs.map((job) => `
+    <div class="job-item ${job.id === state.selectedJobId ? 'active' : ''}" data-job-id="${job.id}">
+      <div class="job-item-email">${escHtml(job.email)}</div>
       <div class="job-item-meta">
-        <span class="job-dot ${dotClass(j.status)}"></span>
-        <span class="job-item-status">${j.status}</span>
-        <span class="job-item-time">${timeAgo(j.createdAt)}</span>
+        <span class="job-dot ${dotClass(job.status)}"></span>
+        <span class="job-item-status">${job.status}</span>
+        <span class="job-item-time">${timeAgo(job.createdAt)}</span>
       </div>
     </div>
   `).join('');
+}
+
+function renderAccountPreview(account) {
+  if (!account?.exists) {
+    accountPreview.innerHTML = '<span class="err">✗ 未找到该账号</span>';
+    accountPreview.classList.remove('hidden');
+    return;
+  }
+
+  const item = account.account;
+  accountPreview.innerHTML = `
+    <span class="ok">✓ 账号存在</span><br>
+    姓名: ${escHtml(item.name || '(空)')} | 手机: ${escHtml(item.phone || '(空)')} | 状态: ${item.status || 'unknown'}
+  `;
+  accountPreview.classList.remove('hidden');
 }
 
 /* ── Render: Detail ── */
@@ -127,48 +261,42 @@ function renderDetail(job, events, artifacts) {
     ${job.failureReason ? `<span style="color:var(--error)">原因: ${escHtml(job.failureReason)}</span>` : ''}
   `;
 
-  // Actions
-  const tokenArt = artifacts.find(a => a.artifactType === 'token');
-  let acts = '';
+  const tokenArt = artifacts.find((item) => item.artifactType === 'token');
+  let actions = '';
   if (tokenArt) {
-    acts += `<a href="${getApiBase()}/api/v1/phase3/jobs/${job.id}/token" target="_blank"><button class="btn-primary btn-sm">下载 Token</button></a>`;
+    actions += `<button class="btn-primary btn-sm" data-action="download" data-job-id="${job.id}" data-email="${job.email}">下载 Token</button>`;
   }
-  if (isRunning(job.status)) {
-    acts += `<button class="btn-danger btn-sm" data-action="cancel" data-job-id="${job.id}">取消任务</button>`;
+  if (canRetry(job)) {
+    actions += `<button class="btn-primary btn-sm" data-action="retry" data-job-id="${job.id}">重试</button>`;
   }
-  if (job.status === 'failed' || job.status === 'canceled') {
-    acts += `<button class="btn-primary btn-sm" data-action="retry" data-job-id="${job.id}">重试</button>`;
-  }
-  detailActions.innerHTML = acts;
+  detailActions.innerHTML = actions;
 
-  // Log
-  const prevCount = logBody.children.length;
-  const newEvents = events.slice(prevCount);
-  newEvents.forEach((e, i) => {
+  logBody.innerHTML = '';
+  events.forEach((event, index) => {
     const line = document.createElement('div');
-    line.className = 'log-line' + (i === newEvents.length - 1 ? ' log-new' : '');
-    const msg = escHtml(e.message)
-      .replace(/(token|succeeded|成功)/gi, '<span class="highlight">$1</span>');
+    line.className = 'log-line' + (index === events.length - 1 ? ' log-new' : '');
+    const message = escHtml(event.message).replace(/(token|succeeded|成功)/gi, '<span class="highlight">$1</span>');
     line.innerHTML = `
-      <span class="log-time">${shortTime(e.createdAt)}</span>
-      <span class="log-level ${e.level}">${e.level}</span>
-      <span class="log-msg">${msg}</span>
+      <span class="log-time">${shortTime(event.createdAt)}</span>
+      <span class="log-level ${event.level}">${event.level}</span>
+      <span class="log-msg">${message}</span>
     `;
     logBody.appendChild(line);
   });
 
-  if (autoScrollCb.checked && newEvents.length > 0) {
+  if (autoScrollCb.checked && events.length > 0) {
     logBody.scrollTop = logBody.scrollHeight;
   }
 }
 
 function clearDetail() {
   state.selectedJobId = null;
-  state.lastEventSeq = 0;
   jobDetail.classList.add('hidden');
   emptyState.classList.remove('hidden');
   logBody.innerHTML = '';
+  detailActions.innerHTML = '';
   renderJobList();
+  stopDetailPoll();
 }
 
 /* ── Data Fetching ── */
@@ -179,7 +307,9 @@ async function fetchJobs() {
     renderJobList();
     workerStatus.textContent = 'live';
     workerStatus.className = 'badge live';
-  } catch {
+  } catch (error) {
+    state.jobs = [];
+    renderJobList();
     workerStatus.textContent = 'offline';
     workerStatus.className = 'badge offline';
   }
@@ -193,15 +323,20 @@ async function fetchDetail(jobId) {
     ]);
     renderDetail(detail.job, events.items || [], detail.artifacts || []);
 
-    // If still running, keep polling events
     if (isRunning(detail.job.status)) {
       startDetailPoll(jobId);
     } else {
       stopDetailPoll();
     }
-  } catch (e) {
-    console.error('fetchDetail error', e);
+  } catch (error) {
+    console.error('fetchDetail error', error);
   }
+}
+
+async function fetchAccount(email) {
+  const result = await api(`/api/v1/accounts/${encodeURIComponent(email)}`);
+  renderAccountPreview(result);
+  return result;
 }
 
 /* ── Polling ── */
@@ -211,7 +346,10 @@ function startGlobalPoll() {
 }
 
 function stopGlobalPoll() {
-  if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
+  if (state.pollTimer) {
+    clearInterval(state.pollTimer);
+    state.pollTimer = null;
+  }
 }
 
 function startDetailPoll(jobId) {
@@ -220,38 +358,71 @@ function startDetailPoll(jobId) {
 }
 
 function stopDetailPoll() {
-  if (state.detailPollTimer) { clearInterval(state.detailPollTimer); state.detailPollTimer = null; }
+  if (state.detailPollTimer) {
+    clearInterval(state.detailPollTimer);
+    state.detailPollTimer = null;
+  }
 }
 
 /* ── Actions ── */
 async function selectJob(jobId) {
   state.selectedJobId = jobId;
-  state.lastEventSeq = 0;
-  logBody.innerHTML = '';
   emptyState.classList.add('hidden');
   jobDetail.classList.remove('hidden');
   renderJobList();
   await fetchDetail(jobId);
 }
 
-async function cancelJob(jobId) {
+async function retryJob(jobId) {
   try {
-    await api(`/api/v1/phase3/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
-    await fetchDetail(jobId);
+    const result = await api(`/api/v1/phase3/jobs/${encodeURIComponent(jobId)}/retry`, {
+      method: 'POST'
+    });
     await fetchJobs();
-  } catch (e) {
-    alert('取消失败: ' + e.message);
+    await selectJob(result.jobId);
+  } catch (error) {
+    alert(`重试失败: ${error.message}`);
   }
 }
 
-async function retryJob(jobId) {
-  try {
-    const result = await api(`/api/v1/phase3/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
-    await fetchJobs();
-    await selectJob(result.jobId);
-  } catch (e) {
-    alert('重试失败: ' + e.message);
+async function downloadToken(jobId, email) {
+  const response = await fetch(`${getApiBase()}/api/v1/phase3/jobs/${encodeURIComponent(jobId)}/token`, {
+    headers: {
+      ...buildAuthHeaders()
+    }
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || payload.error || `HTTP ${response.status}`);
   }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = `codex-${email}-free.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+async function adminLogin(username, password) {
+  const result = await api('/api/v1/admin/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  });
+
+  setSession({
+    role: result.scope?.role || 'admin',
+    username: result.scope?.username || username,
+    token: result.token
+  });
+
+  renderSession();
+  closeAdminModal();
+  await fetchJobs();
 }
 
 async function createAndStartJob(email) {
@@ -260,22 +431,39 @@ async function createAndStartJob(email) {
       method: 'POST',
       body: JSON.stringify({ email })
     });
-    closeModalFn();
+
+    if (result.token && getCurrentRole() !== 'admin') {
+      setSession({
+        role: result.scope?.role || 'guest',
+        email: result.scope?.email || email,
+        token: result.token
+      });
+      renderSession();
+    }
+
+    closeCreateModal();
     await fetchJobs();
     await selectJob(result.jobId);
-  } catch (e) {
-    alert('创建失败: ' + e.message);
+  } catch (error) {
+    if (error.status === 409 && error.payload?.token) {
+      setSession({
+        role: error.payload.scope?.role || 'guest',
+        email: error.payload.scope?.email || email,
+        token: error.payload.token
+      });
+      renderSession();
+      closeCreateModal();
+      await fetchJobs();
+      if (error.payload?.job?.id) {
+        await selectJob(error.payload.job.id);
+      }
+      return;
+    }
+    alert(`创建失败: ${error.message}`);
   }
 }
 
-function closeModalFn() {
-  createModal.classList.add('hidden');
-  emailInput.value = '';
-  accountPreview.classList.add('hidden');
-}
-
 /* ── Event Bindings ── */
-// API toggle
 apiToggle.addEventListener('click', () => {
   apiPopup.classList.toggle('hidden');
   apiBaseInput.value = state.apiBase;
@@ -287,16 +475,40 @@ saveApiBaseBtn.addEventListener('click', () => {
   fetchJobs();
 });
 
-// Create job modal
-createJobBtn.addEventListener('click', () => {
-  createModal.classList.remove('hidden');
-  emailInput.focus();
+openAdminModalBtn.addEventListener('click', () => {
+  openAdminModal();
 });
 
-closeModal.addEventListener('click', closeModalFn);
-cancelModal.addEventListener('click', closeModalFn);
+closeAdminModalBtn.addEventListener('click', () => {
+  closeAdminModal();
+});
 
-// Email preview on blur
+if (cancelAdminBtn) {
+  cancelAdminBtn.addEventListener('click', () => {
+    closeAdminModal();
+  });
+}
+
+adminModal.addEventListener('click', (event) => {
+  if (event.target === adminModal) {
+    closeAdminModal();
+  }
+});
+
+logoutBtn.addEventListener('click', () => {
+  clearSession();
+  renderSession();
+  clearDetail();
+  fetchJobs();
+});
+
+createJobBtn.addEventListener('click', () => {
+  openCreateModal();
+});
+
+closeModal.addEventListener('click', closeCreateModal);
+cancelModal.addEventListener('click', closeCreateModal);
+
 let previewTimer = null;
 emailInput.addEventListener('input', () => {
   clearTimeout(previewTimer);
@@ -305,59 +517,89 @@ emailInput.addEventListener('input', () => {
     accountPreview.classList.add('hidden');
     return;
   }
+
+  if (getCurrentRole() === 'anonymous') {
+    accountPreview.innerHTML = '提交后会自动校验该邮箱是否存在，并切换到当前邮箱访客视角。';
+    accountPreview.classList.remove('hidden');
+    return;
+  }
+
   previewTimer = setTimeout(async () => {
     try {
-      const result = await api(`/api/v1/accounts/${encodeURIComponent(email)}`);
-      if (result.exists) {
-        const a = result.account;
-        accountPreview.innerHTML = `
-          <span class="ok">✓ 账号存在</span><br>
-          姓名: ${escHtml(a.name || '(空)')} | 手机: ${escHtml(a.phone || '(空)')} | 状态: ${a.status || 'unknown'}
-        `;
-      } else {
-        accountPreview.innerHTML = '<span class="err">✗ 未找到该账号</span>';
-      }
-      accountPreview.classList.remove('hidden');
-    } catch {
+      await fetchAccount(email);
+    } catch (error) {
       accountPreview.innerHTML = '<span class="err">查询失败</span>';
       accountPreview.classList.remove('hidden');
     }
   }, 400);
 });
 
-createForm.addEventListener('submit', (e) => {
-  e.preventDefault();
+createForm.addEventListener('submit', (event) => {
+  event.preventDefault();
   const email = emailInput.value.trim();
-  if (email) createAndStartJob(email);
+  if (email) {
+    createAndStartJob(email);
+  }
 });
 
-// Job list click
-jobsList.addEventListener('click', (e) => {
-  const item = e.target.closest('.job-item');
-  if (item) selectJob(item.dataset.jobId);
+adminLoginForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  try {
+    await adminLogin(adminUsernameInput.value.trim(), adminPasswordInput.value);
+  } catch (error) {
+    alert(`管理员登录失败: ${error.message}`);
+  }
 });
 
-// Detail actions (cancel/retry)
-detailActions.addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-action]');
-  if (!btn) return;
-  const action = btn.dataset.action;
-  const jobId = btn.dataset.jobId;
-  if (action === 'cancel') cancelJob(jobId);
-  if (action === 'retry') retryJob(jobId);
+jobsList.addEventListener('click', (event) => {
+  const item = event.target.closest('.job-item');
+  if (item) {
+    selectJob(item.dataset.jobId);
+  }
 });
 
-// Auto scroll
+detailActions.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-action]');
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.action;
+  const jobId = button.dataset.jobId;
+  if (action === 'retry') {
+    await retryJob(jobId);
+    return;
+  }
+  if (action === 'download') {
+    await downloadToken(jobId, button.dataset.email || 'token');
+  }
+});
+
 autoScrollCb.addEventListener('change', () => {
-  if (autoScrollCb.checked) logBody.scrollTop = logBody.scrollHeight;
+  if (autoScrollCb.checked) {
+    logBody.scrollTop = logBody.scrollHeight;
+  }
 });
 
-// Close modal on overlay click
-createModal.addEventListener('click', (e) => {
-  if (e.target === createModal) closeModalFn();
+createModal.addEventListener('click', (event) => {
+  if (event.target === createModal) {
+    closeCreateModal();
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    if (!createModal.classList.contains('hidden')) {
+      closeCreateModal();
+    }
+    if (!adminModal.classList.contains('hidden')) {
+      closeAdminModal();
+    }
+  }
 });
 
 /* ── Init ── */
-setApiBase(state.apiBase);
+setApiBase(state.apiBase || getApiBase());
+renderSession();
 fetchJobs();
 startGlobalPoll();
