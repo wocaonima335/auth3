@@ -81,7 +81,7 @@ function getApiBase() {
   if (state.apiBase) {
     return state.apiBase;
   }
-  return `http://${window.location.hostname}:3000`;
+  return `http://${window.location.hostname}:3080`;
 }
 
 function setApiBase(value) {
