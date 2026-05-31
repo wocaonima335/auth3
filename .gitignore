@@ -2,6 +2,7 @@ data/runtime/db/accounts.json
 data/runtime/db/jobs/
 data/runtime/db/events/
 data/artifacts/
+data-redis-verify/
 .env
 *.log
 node_modules/

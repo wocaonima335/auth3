@@ -1,12 +1,21 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   api:
     build:
       context: ..
       dockerfile: docker/api.Dockerfile
+    depends_on:
+      - redis
     environment:
       AUTH_API_PORT: 3000
       AUTH_WEB_PORT: 3010
       AUTH_WORKER_POLL_MS: 3000
+      AUTH_REDIS_ENABLED: "true"
+      AUTH_REDIS_URL: redis://redis:6379/0
       AUTH_DEFAULT_USER: local-admin
       AUTH_DATA_DIR: /app/data
       AUTH_RUNTIME_MODE: compat-legacy-cli
@@ -24,10 +33,14 @@ services:
     build:
       context: ..
       dockerfile: docker/worker.Dockerfile
+    depends_on:
+      - redis
     environment:
       AUTH_API_PORT: 3000
       AUTH_WEB_PORT: 3010
       AUTH_WORKER_POLL_MS: 3000
+      AUTH_REDIS_ENABLED: "true"
+      AUTH_REDIS_URL: redis://redis:6379/0
       AUTH_DEFAULT_USER: local-admin
       AUTH_DATA_DIR: /app/data
       AUTH_RUNTIME_MODE: compat-legacy-cli

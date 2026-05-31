@@ -68,7 +68,13 @@ function loadRuntimeConfig(repoRoot = path.resolve(__dirname, '..', '..')) {
     webApiBase: process.env.AUTH_API_BASE || `http://localhost:${Number(process.env.AUTH_API_PORT || 3000)}`,
     adminUsername: process.env.AUTH_ADMIN_USERNAME || 'admin',
     adminPassword: process.env.AUTH_ADMIN_PASSWORD || 'abc15497',
-    authTokenSecret: process.env.AUTH_TOKEN_SECRET || 'dev-secret-change-in-prod'
+    authTokenSecret: process.env.AUTH_TOKEN_SECRET || 'dev-secret-change-in-prod',
+    redisEnabled: String(process.env.AUTH_REDIS_ENABLED || 'false').trim().toLowerCase() === 'true',
+    redisUrl: process.env.AUTH_REDIS_URL || 'redis://127.0.0.1:6379/0',
+    redisQueuePendingKey: process.env.AUTH_REDIS_QUEUE_PENDING_KEY || 'auth:phase3:jobs:pending',
+    redisQueueProcessingKey: process.env.AUTH_REDIS_QUEUE_PROCESSING_KEY || 'auth:phase3:jobs:processing',
+    redisQueueDeadKey: process.env.AUTH_REDIS_QUEUE_DEAD_KEY || 'auth:phase3:jobs:dead',
+    redisBlockingTimeoutSec: Number(process.env.AUTH_REDIS_BLOCKING_TIMEOUT_SEC || 5)
   };
 }
 

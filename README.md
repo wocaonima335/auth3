@@ -9,6 +9,7 @@
 3. 账号来源继续兼容老仓库的 `username.json`
 4. Worker 当前通过兼容执行器调用老仓库的 `phase3-fetch-token`
 5. token 会被复制到本仓库 `data/artifacts`，便于前端下载和审计
+6. 当前已支持通过 Redis 承载任务队列
 
 这意味着：
 
@@ -28,6 +29,7 @@ auth/
 │   ├── account-store/
 │   ├── artifact-store/
 │   ├── job-store/
+│   ├── queue-store/
 │   ├── phase3-core/
 │   ├── runtime-config/
 │   ├── shared-types/
@@ -59,15 +61,16 @@ auth/
    - `GET /api/v1/phase3/jobs/:jobId/events`
    - `GET /api/v1/phase3/jobs/:jobId/token`
    - `POST /api/v1/phase3/jobs/:jobId/retry`
-8. Worker 轮询任务并执行
+8. Worker 可在 Redis 模式下阻塞消费任务，未启用 Redis 时回退文件轮询
 9. Web 控制面静态页面
 10. Dockerfile 和 `docker-compose.yml`
+11. Redis 队列升级设计与任务清单
 
 ### 仍属于后续工作
 
 1. 真正把 `Phase3BrowserRuntime` 从老仓库中抽成独立实现
-2. 接入 `postgres + redis`
-3. 把任务状态与事件流切到数据库和消息队列
+2. 把任务状态与事件流切到数据库
+3. 完善 Redis processing 恢复、死信和监控
 4. 把前端升级成 React/Vite 控制面
 5. 把 worker 的兼容执行模式切到原生 `phase3-core`
 
@@ -103,10 +106,14 @@ node apps/web/src/server.js
 - `AUTH_LEGACY_TOKEN_DIRS`
 - `AUTH_LEGACY_CONFIG_PROFILE`
 - `AUTH_LEGACY_CONFIG_FILE`
+- `AUTH_REDIS_ENABLED`
+- `AUTH_REDIS_URL`
 
 如果不额外配置，默认会指向当前老仓库：
 
 - `E:/codex-registrar2/codex-registrar2_副本`
+
+Redis 相关环境变量见 [.env.example](</E:/auth/.env.example:1>)。
 
 ## 兼容执行模式说明
 
@@ -123,6 +130,19 @@ node apps/web/src/server.js
 1. 新控制面仓库已经可以独立承接任务
 2. 不需要在第一步就把所有浏览器自动化细节整体搬过来
 3. 后续可以平滑替换执行器，而不会影响 API / Web / 任务系统
+
+## Redis 队列模式
+
+当 `AUTH_REDIS_ENABLED=true` 时：
+
+1. API 创建任务后，会先写任务文件，再把 `jobId` 入 Redis pending 队列
+2. Worker 通过 Redis 阻塞消费任务
+3. 任务详情与事件仍继续写入文件 job-store
+
+这是一种混合模式：
+
+1. Redis 负责“入队、领取、处理中恢复”
+2. 文件 job-store 负责“状态、事件、产物索引”
 
 ## 数据目录
 

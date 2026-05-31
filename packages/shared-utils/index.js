@@ -78,7 +78,7 @@ function sendJson(res, statusCode, payload) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Auth-User',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Auth-User, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   });
   res.end(body);
@@ -89,7 +89,7 @@ function sendText(res, statusCode, body, contentType = 'text/plain; charset=utf-
     'Content-Type': contentType,
     'Content-Length': Buffer.byteLength(body),
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Auth-User',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Auth-User, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   });
   res.end(body);
@@ -97,7 +97,7 @@ function sendText(res, statusCode, body, contentType = 'text/plain; charset=utf-
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Auth-User');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Auth-User, Authorization');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 }
 
